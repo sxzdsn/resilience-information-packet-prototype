@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Resilience Packet — Style System</title>
     <link rel="stylesheet" href="styles.css" />
-    <link rel="stylesheet" href="style-guide.css?v=20260714-01" />
+    <link rel="stylesheet" href="style-guide.css?v=20260716-02" />
   </head>
   <body class="guide-body">
     <header class="guide-header">
@@ -26,6 +26,7 @@
     <nav class="guide-nav" aria-label="Style system sections">
       <div class="guide-nav-inner">
         <a href="#page-system">Page system</a>
+        <a href="#illustrations">Illustrations</a>
         <a href="#pagination">Pagination</a>
       </div>
     </nav>
@@ -162,22 +163,111 @@
               <span class="contact-entry"><img class="contact-icon" src="assets/icons/phone.svg" alt="" />312-555-5555</span>
               <span class="contact-entry"><img class="contact-icon" src="assets/icons/email.svg" alt="" />email@website.com</span>
             </div>
-            <p class="page-map-description">Anytime the website, phone number, and email appear in the Google Doc, they will be automatically formatted like this in the exported document.</p>
+            <p class="page-map-description">Put a website, phone number, or email on its own line in the Google Doc to automatically format it as a contact treatment in the exported document.</p>
           </article>
           <article class="page-map-card page-map-card-short map-cards">
             <div class="page-map-label">Cards</div>
             <div class="map-card-example">This is information inside the first column of a table that is 1×1.</div>
             <p class="page-map-description">To format something as a card, format it as a <strong>Table in Google Docs</strong>.</p>
           </article>
-          <article class="page-map-card page-map-card-short map-images">
-            <div class="page-map-label">Images</div>
-            <p class="map-normal-specimen">Images from the imported Google Doc automatically populate the <strong>Illustration library</strong>.</p>
-            <p class="page-map-description">By default, images become floating page illustrations. Drag them to reposition them, use the lower-right handle to resize them, or remove them.</p>
-            <p class="page-map-description">To keep an image in the text flow, put <strong>[this picture should be inline]</strong> on its own line immediately before the image in Google Docs.</p>
-            <p class="page-map-description">Use <strong>Save illustrations</strong> to store the layout in the current browser. This does not update the packet for anyone else. If the layout needs to be made permanent, the <strong>email Steph</strong> link in the publisher opens a draft containing the current layout data.</p>
-            <code>[this picture should be inline]</code>
-          </article>
         </div>
+      </section>
+
+      <section id="illustrations" class="guide-section">
+        <div class="guide-section-heading illustrations-section-heading">
+          <div>
+            <h2>Illustrations</h2>
+            <p>Images from the imported Google Doc automatically appear on the packet page as floating illustrations. They can be repositioned and resized without changing the source document.</p>
+          </div>
+        </div>
+
+        <figure class="illustration-demo" aria-labelledby="illustration-demo-title">
+          <figcaption id="illustration-demo-title" class="illustration-demo-title">Images appear automatically as floating illustrations when the document is imported.</figcaption>
+
+          <div class="illustration-demo-flow">
+            <div class="illustration-demo-source">
+              <div class="illustration-demo-label">In Google Docs</div>
+              <div class="illustration-doc-page">
+                <div class="illustration-doc-toolbar" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div class="illustration-doc-content">
+                  <span class="illustration-format-label">Heading 1</span>
+                  <h3 class="illustration-doc-chapter-title">School and work</h3>
+                  <span class="illustration-format-label">Heading 2</span>
+                  <h4>Returning to school</h4>
+                  <p>You can ask for support as you return to classes and activities.</p>
+                  <img src="assets/illustrations/school-backpack.webp" alt="Watercolor illustration of a red backpack" />
+                </div>
+              </div>
+            </div>
+
+            <div class="illustration-demo-transfer" aria-hidden="true">
+              <span>Automatic</span>
+              <svg viewBox="0 0 76 18" focusable="false"><path d="M1 9h67M61 3l7 6-7 6" /></svg>
+            </div>
+
+            <div class="illustration-demo-result">
+              <div class="illustration-demo-label">On the packet page</div>
+              <article class="illustration-packet-page" aria-label="Packet page with a positioned backpack illustration">
+                <h3>School and work</h3>
+                <div class="illustration-packet-content">
+                  <h4>Returning to school</h4>
+                  <p>You can ask for support as you return to classes and activities.</p>
+                </div>
+                <div class="illustration-placed-image">
+                  <img src="assets/illustrations/school-backpack.webp" alt="" />
+                  <span class="illustration-remove-preview">×</span>
+                  <span class="illustration-resize-preview"></span>
+                </div>
+                <footer><span>School and work</span><span>20</span></footer>
+              </article>
+            </div>
+          </div>
+
+        </figure>
+
+        <figure class="illustration-demo illustration-inline-demo" aria-labelledby="illustration-inline-demo-title">
+          <figcaption id="illustration-inline-demo-title" class="illustration-demo-title">Keep an image in the text flow with a red <code>[this picture should be inline]</code>.</figcaption>
+
+          <div class="illustration-demo-flow">
+            <div class="illustration-demo-source">
+              <div class="illustration-demo-label">In Google Docs</div>
+              <div class="illustration-doc-page">
+                <div class="illustration-doc-toolbar" aria-hidden="true"><span></span><span></span><span></span></div>
+                <div class="illustration-doc-content">
+                  <span class="illustration-format-label">Heading 1</span>
+                  <h3 class="illustration-doc-chapter-title">School and work</h3>
+                  <span class="illustration-format-label">Heading 2</span>
+                  <h4>Returning to school</h4>
+                  <p>You can ask for support as you return to classes and activities.</p>
+                  <code>[this picture should be inline]</code>
+                  <img src="assets/illustrations/school-backpack.webp" alt="Watercolor illustration of a red backpack" />
+                </div>
+              </div>
+            </div>
+
+            <div class="illustration-demo-transfer" aria-hidden="true">
+              <span>Automatic</span>
+              <svg viewBox="0 0 76 18" focusable="false"><path d="M1 9h67M61 3l7 6-7 6" /></svg>
+            </div>
+
+            <div class="illustration-demo-result">
+              <div class="illustration-demo-label">On the packet page</div>
+              <article class="illustration-packet-page illustration-inline-packet-page" aria-label="Packet page with an inline backpack illustration">
+                <h3>School and work</h3>
+                <div class="illustration-packet-content illustration-packet-content-inline">
+                  <h4>Returning to school</h4>
+                  <p>You can ask for support as you return to classes and activities.</p>
+                  <div class="illustration-inline-image-preview">
+                    <img src="assets/illustrations/school-backpack.webp" alt="" />
+                    <span class="illustration-resize-preview"></span>
+                  </div>
+                </div>
+                <footer><span>School and work</span><span>20</span></footer>
+              </article>
+            </div>
+          </div>
+
+        </figure>
       </section>
 
       <section id="pagination" class="guide-section">

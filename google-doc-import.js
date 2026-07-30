@@ -58,18 +58,28 @@ function topLevelGoogleBlocks(doc) {
 }
 
 function contactItemsFromText(value) {
+  const text = value.trim();
+  const emailPattern = /^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i;
+  const phonePattern = /^(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$/;
+  const websitePattern = /^(?:https?:\/\/|www\.)[^\s,;]+$|^[a-z0-9-]+\.(?:org|com|net|edu)(?:\/[^\s,;]*)?$/i;
+
+  // A contact value on an otherwise-empty line is an authoring signal. Check
+  // email first so its domain is not mistaken for a standalone website.
+  if (emailPattern.test(text) || phonePattern.test(text) || websitePattern.test(text)) {
+    return [text];
+  }
+
   const email = value.match(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/i)?.[0];
-  const phone = value.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/)?.[0];
-  const website = value.match(/(?:https?:\/\/|www\.)[^\s,;]+|\b[a-z0-9-]+\.(?:org|com|net|edu)\b[^\s,;]*/i)?.[0];
+  const withoutEmail = email ? value.replace(email, "") : value;
+  const phone = withoutEmail.match(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/)?.[0];
+  const withoutPhone = phone ? withoutEmail.replace(phone, "") : withoutEmail;
+  const website = withoutPhone.match(/(?:https?:\/\/|www\.)[^\s,;]+|\b[a-z0-9-]+\.(?:org|com|net|edu)\b[^\s,;]*/i)?.[0];
   if (!website || !phone || !email) return null;
 
-  // Contact groups are an authoring convention: one line containing only the
-  // three contact values. Do not turn a prose paragraph into a contact row
-  // merely because it happens to mention all three.
-  const remainingText = value
+  // A multi-value contact group must still contain contact values only; prose
+  // which merely mentions them remains ordinary body copy.
+  const remainingText = withoutPhone
     .replace(website, "")
-    .replace(phone, "")
-    .replace(email, "")
     .replace(/[\s,;|•·/\\—–-]+/g, "");
   if (remainingText) return null;
 

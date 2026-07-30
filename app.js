@@ -1,4 +1,4 @@
-import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260715-01";
+import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260716-01";
 import { getLegacyFrameClass, makePageComparisons } from "./figma-comparison.js?v=20260713-01";
 
 const sampleSource = window.RESILIENCE_PACKET_SOURCE;
@@ -48,20 +48,46 @@ let documentModel = { chapters: [] };
 let previewCenterFrame;
 const illustrationPositions = new Map();
 const illustrationWidths = new Map();
-const hiddenIllustrationIds = new Set();
 const illustrationLibrary = [];
 const placedIllustrations = [];
-const pendingSavedPlacements = [];
 let illustrationSequence = 0;
 let savedPlacementsRestored = false;
 const illustrationStorageKey = "resilience-packet-illustrations-v1";
-const illustrationLayoutVersion = 2;
+const illustrationLayoutVersion = 3;
 const defaultIllustrationLayouts = new Map([
   ["illustration-2-1qhlv9t", { frame: "15", left: 409.34, top: 576.68, width: 190.35 }],
   ["illustration-3-1u88zji", { frame: "16", left: 448.75, top: 603.27, width: 135.3 }],
-  ["illustration-4-tlve7u", { frame: "18", left: 398.38, top: 59.74, width: 157.63 }],
-  ["illustration-5-1on3w24", { frame: "21", left: 394.1, top: 48.81, width: 167.72 }],
+  ["illustration-4-tlve7u", { frame: "18", left: 421.29, top: 88.78, width: 157.63 }],
+  ["illustration-5-1on3w24", { frame: "21", left: 394, top: 49, width: 167.72 }],
 ]);
+const defaultPlacedIllustrations = [
+  {
+    id: "placed-3",
+    assetId: "document-asset-1qhlv9t",
+    frame: "14",
+    x: 411.3,
+    y: 41.04,
+    width: 132,
+  },
+  {
+    id: "placed-2",
+    assetId: "document-asset-1u88zji",
+    frame: "17",
+    x: 435.17,
+    y: 50.94,
+    width: 132,
+  },
+];
+const defaultPlacedIllustrationIds = new Set(defaultPlacedIllustrations.map(({ id }) => id));
+const hiddenIllustrationIds = new Set([
+  "illustration-2-1qhlv9t",
+  "illustration-3-1u88zji",
+]);
+const pendingSavedPlacements = defaultPlacedIllustrations.map((placement) => ({ ...placement }));
+illustrationSequence = Math.max(
+  illustrationSequence,
+  ...defaultPlacedIllustrations.map(({ id }) => Number(id.match(/placed-(\d+)$/)?.[1] || 0)),
+);
 
 function centerPreviewPages() {
   window.cancelAnimationFrame(previewCenterFrame);
@@ -255,6 +281,13 @@ function safeLinkHref(value) {
   } catch {
     return "";
   }
+}
+
+function contactIconFor(value) {
+  const candidate = (value || "").trim();
+  if (/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(candidate)) return "email.svg";
+  if (/^(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$/.test(candidate)) return "phone.svg";
+  return "website.svg";
 }
 
 function activateLinks(root) {
@@ -608,7 +641,13 @@ function makeBlock(block) {
   if (block.type === "image") {
     if (block.inline) {
       const figure = document.createElement("figure");
-      figure.className = "content-block content-image inline-illustration";
+      figure.className = "content-block content-image inline-illustration resizable-inline-illustration";
+      figure.dataset.illustrationId = block.id;
+      const savedWidth = illustrationWidths.get(block.id);
+      const width = savedWidth || block.width;
+      if (width > 0) figure.style.width = `${width}px`;
+      figure.tabIndex = 0;
+      figure.setAttribute("aria-label", `${block.alt || "Inline illustration"}. Use the lower-right handle to resize it.`);
       const image = document.createElement("img");
       image.src = safeImageSource(block.src) ? block.src : "";
       image.alt = block.alt || "";
@@ -620,6 +659,7 @@ function makeBlock(block) {
         caption.textContent = block.caption;
         figure.append(caption);
       }
+      figure.append(makeIllustrationResizeHandle(block.alt || "inline illustration"));
       return figure;
     }
 
@@ -633,13 +673,12 @@ function makeBlock(block) {
   if (block.type === "contact-row") {
     const row = document.createElement("div");
     row.className = "content-block contact-row";
-    const icons = ["website.svg", "phone.svg", "email.svg"];
     block.items.forEach((item, index) => {
       const href = safeLinkHref(item);
       const entry = document.createElement(href ? "a" : "span");
       entry.className = "contact-entry";
       if (href) entry.href = href;
-      entry.innerHTML = `<img class="contact-icon" src="assets/icons/${icons[index] || icons[0]}" alt="">${escapeHtml(item)}`;
+      entry.innerHTML = `<img class="contact-icon" src="assets/icons/${contactIconFor(item)}" alt="">${escapeHtml(item)}`;
       row.append(entry);
     });
     return row;
@@ -836,11 +875,13 @@ function currentIllustrationLayout() {
     const styles = window.getComputedStyle(illustration);
     const x = Number.parseFloat(styles.getPropertyValue("--illustration-x")) || 0;
     const y = Number.parseFloat(styles.getPropertyValue("--illustration-y")) || 0;
+    const left = Number.parseFloat(illustration.style.left) || illustration.offsetLeft;
+    const top = Number.parseFloat(illustration.style.top) || illustration.offsetTop;
     return {
       id: illustration.dataset.illustrationId,
       frame: paper?.dataset.figmaFrame || "",
-      left: Number((illustration.offsetLeft + x).toFixed(2)),
-      top: Number((illustration.offsetTop + y).toFixed(2)),
+      left: Number((left + x).toFixed(2)),
+      top: Number((top + y).toFixed(2)),
       width: Number(Number.parseFloat(illustration.style.width).toFixed(2)),
     };
   });
@@ -867,23 +908,29 @@ function restoreSavedIllustrations() {
   const snapshotVersion = Number(snapshot.version) || 1;
 
   const savedPlacements = Array.isArray(snapshot.placements) ? snapshot.placements : [];
+  if (snapshotVersion >= illustrationLayoutVersion) pendingSavedPlacements.length = 0;
   savedPlacements.forEach((placement) => {
     if (!placement || typeof placement.id !== "string" || typeof placement.assetId !== "string" || typeof placement.frame !== "string") return;
     if (![placement.x, placement.y, placement.width].every(Number.isFinite)) return;
-    pendingSavedPlacements.push({
+    if (snapshotVersion < illustrationLayoutVersion && defaultPlacedIllustrationIds.has(placement.id)) return;
+    const savedPlacement = {
       id: placement.id,
       assetId: placement.assetId,
       frame: placement.frame,
       x: placement.x,
       y: placement.y,
       width: placement.width,
-    });
+    };
+    const existingIndex = pendingSavedPlacements.findIndex(({ id }) => id === placement.id);
+    if (existingIndex === -1) pendingSavedPlacements.push(savedPlacement);
+    else pendingSavedPlacements[existingIndex] = savedPlacement;
   });
 
   const savedPositions = Array.isArray(snapshot.positions) ? snapshot.positions : [];
   savedPositions.forEach((position) => {
     if (!position || typeof position.id !== "string" || !Number.isFinite(position.x) || !Number.isFinite(position.y)) return;
     if (snapshotVersion < illustrationLayoutVersion && defaultIllustrationLayouts.has(position.id)) return;
+    if (snapshotVersion < illustrationLayoutVersion && defaultPlacedIllustrationIds.has(position.id)) return;
     illustrationPositions.set(position.id, { x: position.x, y: position.y });
   });
 
@@ -891,6 +938,7 @@ function restoreSavedIllustrations() {
   savedWidths.forEach((item) => {
     if (!item || typeof item.id !== "string" || !Number.isFinite(item.width) || item.width < 52) return;
     if (snapshotVersion < illustrationLayoutVersion && defaultIllustrationLayouts.has(item.id)) return;
+    if (snapshotVersion < illustrationLayoutVersion && defaultPlacedIllustrationIds.has(item.id)) return;
     illustrationWidths.set(item.id, item.width);
   });
 
@@ -1130,7 +1178,7 @@ function initializeIllustrationDragging() {
 }
 
 function initializeIllustrationResizing() {
-  els.pages.querySelectorAll(".placed-illustration, .anchored-illustration").forEach((illustration) => {
+  els.pages.querySelectorAll(".placed-illustration, .anchored-illustration, .resizable-inline-illustration").forEach((illustration) => {
     const handle = illustration.querySelector(".illustration-resize");
     if (!handle || handle.dataset.resizeInitialized === "true") return;
     handle.dataset.resizeInitialized = "true";
@@ -1141,7 +1189,8 @@ function initializeIllustrationResizing() {
       const placement = placedIllustrations.find((item) => item.id === id);
       const paper = illustration.closest(".paper");
       const isAnchored = illustration.classList.contains("anchored-illustration");
-      if ((!placement && !isAnchored) || !paper) return;
+      const isInline = illustration.classList.contains("resizable-inline-illustration");
+      if ((!placement && !isAnchored && !isInline) || !paper) return;
       event.preventDefault();
       event.stopPropagation();
       handle.setPointerCapture(event.pointerId);
@@ -1149,11 +1198,14 @@ function initializeIllustrationResizing() {
 
       const paperRect = paper.getBoundingClientRect();
       const scale = paperRect.width / paper.offsetWidth || 1;
-      const startWidth = placement?.width || illustrationWidths.get(id) || Number.parseFloat(illustration.style.width) || 132;
+      const renderedWidth = illustration.getBoundingClientRect().width / scale;
+      const startWidth = placement?.width || illustrationWidths.get(id) || renderedWidth || 132;
       const startX = event.clientX;
       const position = illustrationPositions.get(id) || { x: 0, y: 0 };
       const baseLeft = Number.parseFloat(illustration.style.left) || 0;
-      const maxWidth = Math.max(52, paper.offsetWidth - baseLeft - position.x);
+      const maxWidth = isInline
+        ? Math.max(52, illustration.parentElement?.clientWidth || paper.offsetWidth)
+        : Math.max(52, paper.offsetWidth - baseLeft - position.x);
 
       const move = (moveEvent) => {
         const width = Math.min(maxWidth, Math.max(52, startWidth + (moveEvent.clientX - startX) / scale));
@@ -1168,6 +1220,7 @@ function initializeIllustrationResizing() {
         handle.removeEventListener("pointerup", stop);
         handle.removeEventListener("pointercancel", stop);
         markIllustrationsDirty();
+        if (isInline) paginate();
       };
 
       handle.addEventListener("pointermove", move);
@@ -1251,6 +1304,7 @@ function makeSubsection(subsection, blocks, continued = false) {
   const headingRow = subsection.isUntitled ? null : makeSubsectionHeadingRow(subsection, continued);
   const blocksToRender = mergeBlockFragments(blocks).map((block) => {
     const node = makeBlock(block);
+    if (block.exportWarningId) node.dataset.exportWarningId = block.exportWarningId;
     node.classList.toggle("has-doc-blank-before", block.blankLinesBefore > 0);
     if (block.blankLinesBefore > 0) node.style.setProperty("--doc-blank-lines", block.blankLinesBefore);
     return node;
@@ -1370,7 +1424,17 @@ function splitAtSafeClauseBoundaries(subsection, sentence, frameClass = "") {
   return everyClauseHasTwoLines ? clauses : [sentence];
 }
 
-function fragmentParagraphAtSemanticBoundaries(subsection, block, blockIndex, maxHeight, warnings, fatalWarnings, frameClass = "") {
+function recordFatalWarning(message, warnings, fatalWarnings) {
+  const warning = {
+    id: `export-warning-${fatalWarnings.length + 1}`,
+    message,
+  };
+  warnings.push(warning);
+  fatalWarnings.push(warning);
+  return warning;
+}
+
+function fragmentParagraphAtSemanticBoundaries(subsection, block, blockIndex, maxHeight, warnings, fatalWarnings, frameClass = "", fallbackTitle = "") {
   if (/<a\b/i.test(block.html)) return [block];
   const text = plainText(block.html);
   const segmenter = typeof Intl?.Segmenter === "function"
@@ -1394,16 +1458,16 @@ function fragmentParagraphAtSemanticBoundaries(subsection, block, blockIndex, ma
     };
     const fragmentHeight = renderMeasuredSubsection(subsection, [fragmentBlock], false, frameClass).height;
     if (fragmentHeight > maxHeight) {
-      const message = `A single sentence or clause in “${subsection.title}” is taller than a page and needs an editorial edit before export.`;
-      warnings.push(message);
-      fatalWarnings.push(message);
+      const message = `A single sentence or clause in “${subsection.title || fallbackTitle}” is taller than a page and needs an editorial edit before export.`;
+      fragmentBlock.exportWarningId = recordFatalWarning(message, warnings, fatalWarnings).id;
     }
     return fragmentBlock;
   });
 }
 
-function fragmentSubsectionBlocks(subsection, maxHeight, warnings, fatalWarnings, frameClass = "") {
+function fragmentSubsectionBlocks(subsection, maxHeight, warnings, fatalWarnings, frameClass = "", fallbackTitle = "") {
   const fragments = [];
+  const sectionTitle = subsection.title || fallbackTitle;
   subsection.blocks.forEach((block, blockIndex) => {
     if (block.type === "list" && block.items.length > 1) {
       const listGroup = `${subsection.id}-list-${blockIndex}`;
@@ -1418,9 +1482,8 @@ function fragmentSubsectionBlocks(subsection, maxHeight, warnings, fatalWarnings
         };
         const itemHeight = renderMeasuredSubsection(subsection, [itemBlock], false, frameClass).height;
         if (itemHeight > maxHeight) {
-          const message = `A single list item in “${subsection.title}” is taller than a page and needs an editorial edit before export.`;
-          warnings.push(message);
-          fatalWarnings.push(message);
+          const message = `A single list item in “${sectionTitle}” is taller than a page and needs an editorial edit before export.`;
+          itemBlock.exportWarningId = recordFatalWarning(message, warnings, fatalWarnings).id;
         }
         fragments.push(itemBlock);
       });
@@ -1428,7 +1491,16 @@ function fragmentSubsectionBlocks(subsection, maxHeight, warnings, fatalWarnings
     }
 
     if (block.type === "paragraph" && !block.hasSoftBreak) {
-      fragments.push(...fragmentParagraphAtSemanticBoundaries(subsection, block, blockIndex, maxHeight, warnings, fatalWarnings, frameClass));
+      fragments.push(...fragmentParagraphAtSemanticBoundaries(
+        subsection,
+        block,
+        blockIndex,
+        maxHeight,
+        warnings,
+        fatalWarnings,
+        frameClass,
+        fallbackTitle,
+      ));
       return;
     }
 
@@ -1448,9 +1520,8 @@ function fragmentSubsectionBlocks(subsection, maxHeight, warnings, fatalWarnings
           };
           const rowHeight = renderMeasuredSubsection(subsection, [rowBlock], false, frameClass).height;
           if (rowHeight > maxHeight) {
-            const message = `A single table row in “${subsection.title}” is taller than a page and needs an editorial edit before export.`;
-            warnings.push(message);
-            fatalWarnings.push(message);
+            const message = `A single table row in “${sectionTitle}” is taller than a page and needs an editorial edit before export.`;
+            rowBlock.exportWarningId = recordFatalWarning(message, warnings, fatalWarnings).id;
           }
           fragments.push(rowBlock);
         });
@@ -1459,12 +1530,12 @@ function fragmentSubsectionBlocks(subsection, maxHeight, warnings, fatalWarnings
     }
 
     const height = renderMeasuredSubsection(subsection, [block], false, frameClass).height;
-    fragments.push(block);
+    const fragmentBlock = { ...block };
     if (height > maxHeight) {
-      const message = `A single ${block.type} in “${subsection.title}” is taller than a page and needs an editorial edit before export.`;
-      warnings.push(message);
-      fatalWarnings.push(message);
+      const message = `A single ${block.type} in “${sectionTitle}” is taller than a page and needs an editorial edit before export.`;
+      fragmentBlock.exportWarningId = recordFatalWarning(message, warnings, fatalWarnings).id;
     }
+    fragments.push(fragmentBlock);
   });
   return fragments;
 }
@@ -1806,7 +1877,14 @@ function paginate() {
         return;
       }
 
-      let remaining = fragmentSubsectionBlocks(subsection, current.maxHeight, warnings, fatalWarnings, current.measurementFrameClass);
+      let remaining = fragmentSubsectionBlocks(
+        subsection,
+        current.maxHeight,
+        warnings,
+        fatalWarnings,
+        current.measurementFrameClass,
+        chapter.title,
+      );
       let continued = startsContinued;
 
       while (remaining.length) {
@@ -1866,13 +1944,31 @@ function paginate() {
   initializeIllustrationResizing();
   initializeIllustrationDropTargets();
   centerPreviewPages();
-  els.warnings.textContent = warnings.join(" ");
+  els.warnings.replaceChildren(...warnings.map((warning) => {
+    const item = document.createElement("span");
+    item.className = "render-warning";
+    item.append(document.createTextNode(warning.message));
+
+    const marker = els.pages.querySelector(`[data-export-warning-id="${warning.id}"]`);
+    const paper = marker?.closest(".paper");
+    const comparison = paper?.closest(".page-comparison");
+    const pageLabel = comparison?.querySelector(".prototype-column > .comparison-label")?.textContent.trim();
+    if (comparison && paper && pageLabel) {
+      const targetId = `packet-page-${paper.dataset.figmaFrame}`;
+      comparison.id = targetId;
+      const link = document.createElement("a");
+      link.href = `#${targetId}`;
+      link.textContent = `View ${pageLabel}`;
+      item.append(document.createTextNode(" "), link);
+    }
+    return item;
+  }));
   els.warnings.classList.toggle("is-visible", warnings.length > 0);
   const exportBlocked = fatalWarnings.length > 0;
   els.printButton.disabled = exportBlocked;
   document.body.classList.toggle("has-fatal-overflow", exportBlocked);
   els.printBlocker.textContent = exportBlocked
-    ? `PDF export blocked: ${fatalWarnings.join(" ")}`
+    ? `PDF export blocked: ${fatalWarnings.map((warning) => warning.message).join(" ")}`
     : "";
 }
 

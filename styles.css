@@ -681,6 +681,21 @@ textarea:focus {
   display: block;
 }
 
+.render-warning {
+  display: block;
+}
+
+.render-warning + .render-warning {
+  margin-top: 4px;
+}
+
+.render-warning a {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .print-blocker {
   display: none;
 }
@@ -698,6 +713,10 @@ textarea:focus {
   grid-template-columns: repeat(2, max-content);
   align-items: start;
   gap: 24px;
+}
+
+.page-comparison[id] {
+  scroll-margin-top: 16px;
 }
 
 .app-shell.figma-hidden .page-comparison {
@@ -1613,6 +1632,46 @@ textarea:focus {
   margin: 0 0 12px;
 }
 
+.resizable-inline-illustration {
+  position: relative;
+  max-width: 100%;
+  touch-action: none;
+}
+
+.content-image.resizable-inline-illustration img {
+  width: 100%;
+}
+
+.resizable-inline-illustration:hover,
+.resizable-inline-illustration:focus-visible,
+.resizable-inline-illustration.is-resizing {
+  outline: 1px dashed #777;
+  outline-offset: 5px;
+}
+
+.resizable-inline-illustration::after {
+  position: absolute;
+  top: -25px;
+  left: 0;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #111;
+  color: #fff;
+  content: "Pull corner to resize";
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  white-space: nowrap;
+}
+
+.resizable-inline-illustration:hover::after,
+.resizable-inline-illustration:focus-visible::after {
+  opacity: 1;
+}
+
 .illustration-anchor {
   display: block;
   width: 0;
@@ -1710,7 +1769,9 @@ textarea:focus {
 .preview-illustration:hover .illustration-remove,
 .preview-illustration:focus-within .illustration-remove,
 .preview-illustration:hover .illustration-resize,
-.preview-illustration:focus-within .illustration-resize {
+.preview-illustration:focus-within .illustration-resize,
+.resizable-inline-illustration:hover .illustration-resize,
+.resizable-inline-illustration:focus-within .illustration-resize {
   opacity: 1;
 }
 
@@ -1741,7 +1802,9 @@ textarea:focus {
   content: "";
 }
 
-.placed-illustration.is-resizing {
+.placed-illustration.is-resizing,
+.anchored-illustration.is-resizing,
+.resizable-inline-illustration.is-resizing {
   cursor: nwse-resize;
   outline: 1px dashed #111;
   outline-offset: 5px;
@@ -2408,7 +2471,8 @@ textarea:focus {
     cursor: auto;
   }
 
-  .preview-illustration::after {
+  .preview-illustration::after,
+  .resizable-inline-illustration::after {
     display: none;
   }
 
