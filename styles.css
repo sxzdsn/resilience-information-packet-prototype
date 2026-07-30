@@ -1638,8 +1638,20 @@ textarea:focus {
   touch-action: none;
 }
 
-.content-image.resizable-inline-illustration img {
+.content-image.resizable-inline-illustration > img {
   width: 100%;
+}
+
+.inline-illustration-viewport {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 5px;
+}
+
+.content-image .inline-illustration-viewport img {
+  display: block;
+  max-width: none;
+  border-radius: 0;
 }
 
 .resizable-inline-illustration:hover,

@@ -41,7 +41,7 @@ function preserveGoogleInlineStyles(root, styleMap, ignoreRedText) {
       return;
     }
 
-    if (node.tagName !== "SPAN") return;
+    if (node.tagName !== "SPAN" || node.querySelector("img")) return;
     let outer = node;
     if (/font-weight\s*:\s*(?:bold|[6-9]00)/.test(declarations)) outer = wrapNode(outer, "strong");
     if (/font-style\s*:\s*italic/.test(declarations)) outer = wrapNode(outer, "em");
@@ -252,6 +252,26 @@ function imageDimension(image, property) {
   return match ? Number.parseFloat(match[1]) : 0;
 }
 
+function imageStylePixelValue(element, property) {
+  const match = (element?.getAttribute("style") || "").match(
+    new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*(-?[\\d.]+)px`, "i"),
+  );
+  return match ? Number.parseFloat(match[1]) : 0;
+}
+
+function imageCropViewport(image, boundary) {
+  let candidate = image.parentElement;
+  while (candidate) {
+    const overflow = candidate.style?.overflow || "";
+    const width = imageDimension(candidate, "width");
+    const height = imageDimension(candidate, "height");
+    if (overflow === "hidden" && width > 0 && height > 0) return { width, height };
+    if (candidate === boundary) break;
+    candidate = candidate.parentElement;
+  }
+  return null;
+}
+
 function makeImageSourceBlocks(node) {
   const images = node.tagName === "IMG" ? [node] : [...node.querySelectorAll("img")];
   const caption = node.tagName === "IMG" ? "" : node.textContent.trim();
@@ -267,6 +287,13 @@ function makeImageSourceBlocks(node) {
     const height = imageDimension(sourceImage, "height");
     if (width) figure.dataset.width = String(width);
     if (height) figure.dataset.height = String(height);
+    const cropViewport = imageCropViewport(sourceImage, node);
+    if (cropViewport) {
+      figure.dataset.cropWidth = String(cropViewport.width);
+      figure.dataset.cropHeight = String(cropViewport.height);
+      figure.dataset.cropLeft = String(imageStylePixelValue(sourceImage, "margin-left"));
+      figure.dataset.cropTop = String(imageStylePixelValue(sourceImage, "margin-top"));
+    }
     figure.append(image);
     if (caption && index === 0) {
       const figcaption = node.ownerDocument.createElement("figcaption");

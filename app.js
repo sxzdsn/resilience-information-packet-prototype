@@ -475,6 +475,10 @@ function parseSource() {
           caption: node.querySelector("figcaption")?.textContent.trim() || "",
           width: Number(node.dataset.width) || 0,
           height: Number(node.dataset.height) || 0,
+          cropWidth: Number(node.dataset.cropWidth) || 0,
+          cropHeight: Number(node.dataset.cropHeight) || 0,
+          cropLeft: Number(node.dataset.cropLeft) || 0,
+          cropTop: Number(node.dataset.cropTop) || 0,
           inline: node.dataset.imageLayout === "inline",
         });
       }
@@ -644,16 +648,28 @@ function makeBlock(block) {
       figure.className = "content-block content-image inline-illustration resizable-inline-illustration";
       figure.dataset.illustrationId = block.id;
       const savedWidth = illustrationWidths.get(block.id);
-      const width = savedWidth || block.width;
+      const width = savedWidth || block.cropWidth || block.width;
       if (width > 0) figure.style.width = `${width}px`;
       figure.tabIndex = 0;
       figure.setAttribute("aria-label", `${block.alt || "Inline illustration"}. Use the lower-right handle to resize it.`);
       const image = document.createElement("img");
       image.src = safeImageSource(block.src) ? block.src : "";
       image.alt = block.alt || "";
-      if (block.width > 0) image.width = block.width;
-      if (block.height > 0) image.height = block.height;
-      figure.append(image);
+      if (block.cropWidth > 0 && block.cropHeight > 0) {
+        const viewport = document.createElement("div");
+        viewport.className = "inline-illustration-viewport";
+        viewport.style.aspectRatio = `${block.cropWidth} / ${block.cropHeight}`;
+        if (block.width > 0) image.style.width = `${(block.width / block.cropWidth) * 100}%`;
+        if (block.height > 0) image.style.height = `${(block.height / block.cropHeight) * 100}%`;
+        image.style.marginLeft = `${(block.cropLeft / block.cropWidth) * 100}%`;
+        image.style.marginTop = `${(block.cropTop / block.cropHeight) * 100}%`;
+        viewport.append(image);
+        figure.append(viewport);
+      } else {
+        if (block.width > 0) image.width = block.width;
+        if (block.height > 0) image.height = block.height;
+        figure.append(image);
+      }
       if (block.caption) {
         const caption = document.createElement("figcaption");
         caption.textContent = block.caption;
