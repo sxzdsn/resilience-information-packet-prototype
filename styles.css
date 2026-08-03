@@ -1488,8 +1488,8 @@ textarea:focus {
   padding: 15px 19px;
   border: 0;
   border-bottom: 1px solid #ccc;
-  text-align: left;
-  vertical-align: top;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .content-table th {
@@ -1507,6 +1507,15 @@ textarea:focus {
 
 .content-table tr > * + * {
   border-left: 0;
+}
+
+.content-table-outline tr > * + * {
+  border-left: 1px solid #ccc;
+}
+
+.content-table-outline th,
+.content-table-outline td {
+  overflow-wrap: anywhere;
 }
 
 .content-table ul,
@@ -2003,7 +2012,9 @@ textarea:focus {
 }
 
 .card-grid-imported article {
+  align-content: center;
   min-height: 74px;
+  text-align: center;
 }
 
 .card-grid article:only-child {

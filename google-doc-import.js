@@ -788,6 +788,7 @@ export function transformGoogleDocExport(html, options = {}) {
 
     if (node.tagName === "TABLE" && pendingOutlineTable) {
       pendingOutlineTable = false;
+      node.dataset.tableStyle = "outline";
       pushImported(node);
       return;
     }

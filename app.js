@@ -442,6 +442,7 @@ function parseSource() {
     } else if (tag === "table") {
       target.blocks.push({
         type: "table",
+        outline: node.dataset.tableStyle === "outline",
         rows: [...node.rows].map((row) =>
           [...row.cells].map((cell) => ({
             html: cleanHtml(cell),
@@ -818,6 +819,7 @@ function makeBlock(block) {
   if (block.type === "table") {
     const table = document.createElement("table");
     table.className = "content-block content-table";
+    table.classList.toggle("content-table-outline", block.outline === true);
     table.classList.toggle(
       "table-single-column",
       block.rows.length === 3 && block.rows.every((row) => row.length === 1),
@@ -827,7 +829,7 @@ function makeBlock(block) {
     const body = document.createElement("tbody");
     block.rows.forEach((row) => {
       const tr = document.createElement("tr");
-      if (row.length > 1) {
+      if (row.length > 1 && block.outline !== true) {
         const td = document.createElement("td");
         td.colSpan = row.reduce((sum, cell) => sum + (cell.colspan || 1), 0);
         td.className = "citation-cell";
@@ -1685,6 +1687,59 @@ function makeCover(data = {}) {
   return paper;
 }
 
+const orientationTextFitRules = [
+  { selector: ".orientation-title", maxWidth: 515, maxHeight: 32, minFontSize: 16 },
+  { selector: ".orientation-rights p", maxHeight: 88, minFontSize: 10 },
+  { selector: ".orientation-emotions > p", maxHeight: 56, minFontSize: 10 },
+  { selector: ".orientation-emotions small:nth-of-type(1)", maxHeight: 38, minFontSize: 8 },
+  { selector: ".orientation-emotions small:nth-of-type(2)", maxHeight: 36, minFontSize: 8 },
+  { selector: ".orientation-confidentiality p", maxHeight: 58, minFontSize: 10 },
+  { selector: ".orientation-billing p", maxHeight: 58, minFontSize: 10 },
+  { selector: ".orientation-billing small", maxHeight: 34, minFontSize: 8 },
+  { selector: ".orientation-organization p", maxHeight: 40, minFontSize: 10 },
+  { selector: ".orientation-organization small", maxHeight: 20, minFontSize: 9 },
+  { selector: ".orientation-footnote", maxWidth: 402, maxHeight: 12, minFontSize: 6 },
+];
+
+function fitTextToBounds(element, { maxWidth = Infinity, maxHeight = Infinity, minFontSize }) {
+  element.style.removeProperty("font-size");
+  element.classList.remove("is-text-fitted");
+  delete element.dataset.fittedFontSize;
+
+  const preferredFontSize = Number.parseFloat(getComputedStyle(element).fontSize);
+  const fits = () => (
+    element.scrollWidth <= maxWidth + 0.5
+    && element.scrollHeight <= maxHeight + 0.5
+  );
+  if (fits()) return;
+
+  let lower = Math.min(minFontSize, preferredFontSize);
+  let upper = preferredFontSize;
+  element.style.fontSize = `${lower}px`;
+
+  if (fits()) {
+    for (let iteration = 0; iteration < 12; iteration += 1) {
+      const candidate = (lower + upper) / 2;
+      element.style.fontSize = `${candidate}px`;
+      if (fits()) lower = candidate;
+      else upper = candidate;
+    }
+  }
+
+  const fittedFontSize = Math.floor(lower * 100) / 100;
+  element.style.fontSize = `${fittedFontSize}px`;
+  element.classList.add("is-text-fitted");
+  element.dataset.fittedFontSize = String(fittedFontSize);
+}
+
+function fitOrientationText(root) {
+  root.querySelectorAll(".orientation-page").forEach((page) => {
+    orientationTextFitRules.forEach(({ selector, ...bounds }) => {
+      page.querySelectorAll(selector).forEach((element) => fitTextToBounds(element, bounds));
+    });
+  });
+}
+
 function makeOrientationPage(data = {}) {
   const summary = {
     title: "",
@@ -2009,6 +2064,7 @@ function paginate() {
   });
 
   els.pages.replaceChildren(...makePageComparisons(output, isLiveDocument));
+  fitOrientationText(els.pages);
   activateLinks(els.pages);
   renderAnchoredIllustrations();
   renderPlacedIllustrations();
