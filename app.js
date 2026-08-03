@@ -1,4 +1,4 @@
-import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260716-01";
+import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260802-04";
 import { getLegacyFrameClass, makePageComparisons } from "./figma-comparison.js?v=20260713-01";
 
 const sampleSource = window.RESILIENCE_PACKET_SOURCE;
@@ -494,6 +494,24 @@ function parseSource() {
         type: "steps",
         items: [...node.querySelectorAll("li")].map((item) => cleanHtml(item)),
       });
+    } else if (node.dataset.blockType === "paired-blocks") {
+      const list = node.querySelector(":scope > ul, :scope > ol");
+      target.blocks.push({
+        type: "paired-blocks",
+        rows: [...(list?.children || [])]
+          .filter((item) => item.tagName === "LI")
+          .map((item) => {
+            const label = item.cloneNode(true);
+            label.querySelectorAll(":scope > ul, :scope > ol").forEach((nested) => nested.remove());
+            const nestedList = item.querySelector(":scope > ul, :scope > ol");
+            return {
+              label: cleanHtml(label),
+              details: [...(nestedList?.children || [])]
+                .filter((detail) => detail.tagName === "LI")
+                .map((detail) => cleanHtml(detail)),
+            };
+          }),
+      });
     } else if (node.dataset.blockType === "callout-group") {
       target.blocks.push({
         type: "callout-group",
@@ -719,6 +737,22 @@ function makeBlock(block) {
       steps.append(row);
     });
     return steps;
+  }
+
+  if (block.type === "paired-blocks") {
+    const blocks = document.createElement("div");
+    blocks.className = "content-block process-steps paired-blocks";
+    block.rows.forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "process-step paired-block";
+      const label = document.createElement("strong");
+      label.innerHTML = item.label;
+      const detail = document.createElement("span");
+      detail.innerHTML = item.details.join("<br>");
+      row.append(label, detail);
+      blocks.append(row);
+    });
+    return blocks;
   }
 
   if (block.type === "card-grid") {

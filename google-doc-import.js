@@ -115,28 +115,6 @@ function makeCardGridSourceBlock(table) {
   return grid;
 }
 
-function makeThreeRowInformationTableSourceBlock(table) {
-  const rows = [...table.rows];
-  if (rows.length !== 3) return null;
-  const meaningfulCells = (row) => [...row.cells].filter((cell) => (
-    cell.textContent.trim() || cell.querySelector("img, br")
-  ));
-  const [headerCells, detailCells] = rows.slice(0, 2).map(meaningfulCells);
-  if (headerCells.length !== 1 || detailCells.length !== 1) return null;
-
-  const informationTable = table.cloneNode(true);
-  const citationColumnCount = Math.max(informationTable.rows[2]?.cells.length || 0, 1);
-  [0, 1].forEach((rowIndex) => {
-    const row = informationTable.rows[rowIndex];
-    const sourceCell = meaningfulCells(row)[0];
-    const cell = table.ownerDocument.createElement(rowIndex === 0 ? "th" : "td");
-    cell.colSpan = citationColumnCount;
-    cell.innerHTML = sourceCell.innerHTML;
-    row.replaceChildren(cell);
-  });
-  return informationTable;
-}
-
 function declaredIndent(declarations, property) {
   const match = declarations.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*(-?[\\d.]+)(?:pt|px)?`, "i"));
   return match ? Math.max(0, Number(match[1])) : 0;
@@ -202,6 +180,14 @@ function normalizeAdjacentLists(nodes, styleMap) {
     start = end;
   }
   return normalized;
+}
+
+function normalizeTableCellLists(table, styleMap) {
+  [...table.rows].forEach((row) => {
+    [...row.cells].forEach((cell) => {
+      cell.replaceChildren(...normalizeAdjacentLists([...cell.children], styleMap));
+    });
+  });
 }
 
 function splitHeadingAtDoubleLineBreak(node) {
@@ -327,6 +313,26 @@ function isStandalonePageBreakDirective(node, styleMap) {
 
 function isInlineImageDirective(node) {
   return /^\[\s*this picture should be inline\s*\]$/i.test(node.textContent.trim());
+}
+
+function isProcessBlockDirective(node, styleMap) {
+  if (!/^\[\s*block\s*\]$/i.test(node.textContent.trim())) return false;
+  return [node, ...node.querySelectorAll("span,a")]
+    .some((candidate) => isRedStyle(styleDeclarations(candidate, styleMap)));
+}
+
+function isOutlineTableDirective(node, styleMap) {
+  if (!/^\[\s*outline table\s*\]$/i.test(node.textContent.trim())) return false;
+  return [node, ...node.querySelectorAll("span,a")]
+    .some((candidate) => isRedStyle(styleDeclarations(candidate, styleMap)));
+}
+
+function makePairedBlockSourceBlock(list) {
+  const block = list.ownerDocument.createElement("div");
+  block.dataset.blockType = "paired-blocks";
+  list.removeAttribute("data-block-type");
+  block.append(list);
+  return block;
 }
 
 function isDeprecatedInlineImageDirective(node) {
@@ -546,6 +552,8 @@ export function transformGoogleDocExport(html, options = {}) {
   let pendingBlankLines = 0;
   let pendingPageBreak = false;
   let pendingInlineImage = false;
+  let pendingProcessBlock = false;
+  let pendingOutlineTable = false;
   let pageBreakDirectives = 0;
 
   const pushImported = (...nodes) => {
@@ -566,6 +574,8 @@ export function transformGoogleDocExport(html, options = {}) {
     if (pageDirectiveType(sourceNode, styleMap) || specialPageNodes.has(sourceNode)) {
       pendingBlankLines = 0;
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       return;
     }
     if (!reachedStart) {
@@ -577,23 +587,47 @@ export function transformGoogleDocExport(html, options = {}) {
       pendingBlankLines = 0;
       pendingPageBreak = true;
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       pageBreakDirectives += 1;
+      return;
+    }
+    if (isProcessBlockDirective(sourceNode, styleMap)) {
+      pendingBlankLines = 0;
+      pendingInlineImage = false;
+      pendingProcessBlock = true;
+      pendingOutlineTable = false;
+      ignoredRedNodes += 1;
+      return;
+    }
+    if (isOutlineTableDirective(sourceNode, styleMap)) {
+      pendingBlankLines = 0;
+      pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = true;
+      ignoredRedNodes += 1;
       return;
     }
     if (isInlineImageDirective(sourceNode)) {
       pendingBlankLines = 0;
       pendingInlineImage = true;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       return;
     }
     if (isDeprecatedInlineImageDirective(sourceNode)) {
       pendingBlankLines = 0;
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       return;
     }
     if (isPageBreak(sourceNode, styleMap) || sourceNode.tagName === "HR") {
       pendingBlankLines = 0;
       pendingPageBreak = false;
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       return;
     }
 
@@ -601,6 +635,8 @@ export function transformGoogleDocExport(html, options = {}) {
     const inlineSplit = splitAtManualPageBreaks(node, styleMap);
     if (inlineSplit.count) {
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       pageBreakDirectives += inlineSplit.count;
       inlineSplit.nodes.forEach((segment, segmentIndex) => {
         if (segmentIndex === 0 && segment.dataset.pageBreakBefore === "true") pendingBlankLines = 0;
@@ -622,6 +658,8 @@ export function transformGoogleDocExport(html, options = {}) {
     if (ignoreRedText && isRedStyle(styleDeclarations(node, styleMap))) {
       ignoredRedNodes += 1;
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       return;
     }
     preserveGoogleInlineStyles(node, styleMap, ignoreRedText);
@@ -629,11 +667,15 @@ export function transformGoogleDocExport(html, options = {}) {
     const headingSplit = splitHeadingAtDoubleLineBreak(node);
     if (headingSplit) {
       pendingInlineImage = false;
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       pushImported(...headingSplit);
       return;
     }
     const imageBlocks = makeImageSourceBlocks(node);
     if (imageBlocks.length) {
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
       if (pendingInlineImage) {
         imageBlocks.forEach((imageBlock) => { imageBlock.dataset.imageLayout = "inline"; });
       }
@@ -650,6 +692,24 @@ export function transformGoogleDocExport(html, options = {}) {
 
     pendingInlineImage = false;
 
+    if (node.tagName === "TABLE") normalizeTableCellLists(node, styleMap);
+
+    if (/^(?:UL|OL)$/.test(node.tagName) && pendingProcessBlock) {
+      pendingProcessBlock = false;
+      pendingOutlineTable = false;
+      node.dataset.blockType = "paired-blocks";
+      pushImported(node);
+      return;
+    }
+    pendingProcessBlock = false;
+
+    if (node.tagName === "TABLE" && pendingOutlineTable) {
+      pendingOutlineTable = false;
+      pushImported(node);
+      return;
+    }
+    pendingOutlineTable = false;
+
     if (/^H[4-6]$/.test(node.tagName)) {
       const nestedHeading = document.createElement("h3");
       nestedHeading.innerHTML = node.innerHTML;
@@ -658,7 +718,7 @@ export function transformGoogleDocExport(html, options = {}) {
     }
 
     if (node.tagName === "TABLE") {
-      pushImported(makeThreeRowInformationTableSourceBlock(node) || makeCardGridSourceBlock(node));
+      pushImported(makeCardGridSourceBlock(node));
       return;
     }
 
@@ -674,7 +734,11 @@ export function transformGoogleDocExport(html, options = {}) {
     imported.unshift(heading);
   }
 
-  const normalizedImported = normalizeAdjacentLists(imported, styleMap);
+  const normalizedImported = normalizeAdjacentLists(imported, styleMap).map((node) => (
+    /^(?:UL|OL)$/.test(node.tagName) && node.dataset.blockType === "paired-blocks"
+      ? makePairedBlockSourceBlock(node)
+      : node
+  ));
 
   normalizedImported.forEach((node, index) => {
     if (node.tagName !== "H1" || normalizedImported[index + 1]?.tagName !== "P") return;
