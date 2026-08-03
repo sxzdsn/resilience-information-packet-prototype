@@ -92,9 +92,10 @@ Whenever handing off a visual change, include the applicable plain clickable loc
 - Normal text → packet body copy.
 - Website, phone number, and email on one line → formatted contact group.
 - Google Docs tables → gray packet cards by default.
-- Red `[outline table]` immediately before a Google Docs table → outlined content table.
+- Red `[outline table]` immediately before a Google Docs table → outlined content table. It can be stacked with `[block]` to outline paired blocks.
 - Google Docs images → proportional packet image blocks using the embedded source image.
-- Red `[block]` immediately before a bulleted or numbered list → paired blocks with each top-level item on the left and its nested item or items on the right.
+- Red `[page break]` immediately before content → force that content onto a new page.
+- Red `[block]` immediately before a bulleted or numbered list or a table → paired blocks with each top-level item or table-row label on the left and its nested item or items on the right.
 - Red `[Cover]` → special cover template. Google Docs Title and Subtitle styles supply the main copy; website and year are detected from the remaining lines.
 - Red `[Summary Graphic]` → special summary-card template.
 - Red `[Letter]` → special introductory-letter template. Fully italicized Google Doc paragraphs are an authoring signal for the lower, smaller supporting-notes section; the rendered notes are not italic.

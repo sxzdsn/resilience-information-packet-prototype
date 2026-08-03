@@ -299,15 +299,22 @@ function pageDirectiveType(node, styleMap) {
   return match[1].toLowerCase().replace(" ", "-");
 }
 
+function isPageBreakDirectiveText(value) {
+  const text = value.trim();
+  // Keep the angle-bracket form as a quiet compatibility fallback for older
+  // documents; new authoring uses the same bracket syntax as every marker.
+  return /^\[\s*page break\s*\]$/i.test(text) || /^<\s*page break\s*>$/i.test(text);
+}
+
 function manualPageBreakRuns(node, styleMap) {
   return [node, ...node.querySelectorAll("span,a")].filter((candidate) => (
-    /^<\s*page break\s*>$/i.test(candidate.textContent.trim())
+    isPageBreakDirectiveText(candidate.textContent)
     && isRedStyle(styleDeclarations(candidate, styleMap))
   ));
 }
 
 function isStandalonePageBreakDirective(node, styleMap) {
-  return /^<\s*page break\s*>$/i.test(node.textContent.trim())
+  return isPageBreakDirectiveText(node.textContent)
     && manualPageBreakRuns(node, styleMap).length > 0;
 }
 
@@ -327,11 +334,79 @@ function isOutlineTableDirective(node, styleMap) {
     .some((candidate) => isRedStyle(styleDeclarations(candidate, styleMap)));
 }
 
-function makePairedBlockSourceBlock(list) {
-  const block = list.ownerDocument.createElement("div");
+function appendPairedSourceRow(block, labelHtml, detailHtmlItems) {
+  const row = block.ownerDocument.createElement("div");
+  row.dataset.pairedRow = "true";
+  const label = block.ownerDocument.createElement("div");
+  label.dataset.pairedLabel = "true";
+  label.innerHTML = labelHtml;
+  const details = block.ownerDocument.createElement("div");
+  details.dataset.pairedDetails = "true";
+  detailHtmlItems.forEach((html) => {
+    const detail = block.ownerDocument.createElement("div");
+    detail.dataset.pairedDetail = "true";
+    detail.innerHTML = html;
+    details.append(detail);
+  });
+  row.append(label, details);
+  block.append(row);
+}
+
+function makePairedBlockSourceBlock(source) {
+  const block = source.ownerDocument.createElement("div");
   block.dataset.blockType = "paired-blocks";
-  list.removeAttribute("data-block-type");
-  block.append(list);
+  if (source.dataset.tableStyle === "outline") block.dataset.tableStyle = "outline";
+
+  if (/^(?:UL|OL)$/.test(source.tagName)) {
+    [...source.children]
+      .filter((item) => item.tagName === "LI")
+      .forEach((item) => {
+        const label = item.cloneNode(true);
+        label.querySelectorAll(":scope > ul, :scope > ol").forEach((nested) => nested.remove());
+        const nestedList = item.querySelector(":scope > ul, :scope > ol");
+        appendPairedSourceRow(
+          block,
+          label.innerHTML,
+          [...(nestedList?.children || [])]
+            .filter((detail) => detail.tagName === "LI")
+            .map((detail) => detail.innerHTML),
+        );
+      });
+    return block;
+  }
+
+  [...source.rows].forEach((row) => {
+    const cells = [...row.cells];
+    if (!cells.length) return;
+
+    if (cells.length > 1) {
+      const detailHtmlItems = cells.slice(1).flatMap((cell) => {
+        const list = cell.querySelector(":scope > ul, :scope > ol");
+        if (list) {
+          return [...list.children]
+            .filter((item) => item.tagName === "LI")
+            .map((item) => item.innerHTML);
+        }
+        return [cell.innerHTML];
+      });
+      appendPairedSourceRow(block, cells[0].innerHTML, detailHtmlItems);
+      return;
+    }
+
+    const cell = cells[0];
+    const list = cell.querySelector(":scope > ul, :scope > ol");
+    const children = [...cell.children];
+    const listIndex = list ? children.indexOf(list) : -1;
+    const labelNodes = listIndex >= 0 ? children.slice(0, listIndex) : children.slice(0, 1);
+    const labelHtml = labelNodes.map((node) => node.innerHTML).join("<br>");
+    const detailHtmlItems = list
+      ? [...list.children]
+        .filter((item) => item.tagName === "LI")
+        .map((item) => item.innerHTML)
+      : children.slice(1).map((node) => node.innerHTML);
+    appendPairedSourceRow(block, labelHtml || cell.innerHTML, detailHtmlItems);
+  });
+
   return block;
 }
 
@@ -596,14 +671,12 @@ export function transformGoogleDocExport(html, options = {}) {
       pendingBlankLines = 0;
       pendingInlineImage = false;
       pendingProcessBlock = true;
-      pendingOutlineTable = false;
       ignoredRedNodes += 1;
       return;
     }
     if (isOutlineTableDirective(sourceNode, styleMap)) {
       pendingBlankLines = 0;
       pendingInlineImage = false;
-      pendingProcessBlock = false;
       pendingOutlineTable = true;
       ignoredRedNodes += 1;
       return;
@@ -696,11 +769,21 @@ export function transformGoogleDocExport(html, options = {}) {
 
     if (/^(?:UL|OL)$/.test(node.tagName) && pendingProcessBlock) {
       pendingProcessBlock = false;
+      if (pendingOutlineTable) node.dataset.tableStyle = "outline";
       pendingOutlineTable = false;
       node.dataset.blockType = "paired-blocks";
       pushImported(node);
       return;
     }
+
+    if (node.tagName === "TABLE" && pendingProcessBlock) {
+      pendingProcessBlock = false;
+      if (pendingOutlineTable) node.dataset.tableStyle = "outline";
+      pendingOutlineTable = false;
+      pushImported(makePairedBlockSourceBlock(node));
+      return;
+    }
+
     pendingProcessBlock = false;
 
     if (node.tagName === "TABLE" && pendingOutlineTable) {
@@ -745,7 +828,12 @@ export function transformGoogleDocExport(html, options = {}) {
     if (node.tagName !== "H1" || nextNode?.tagName !== "P") return;
     // An empty Google Docs paragraph after Heading 1 makes the following
     // Normal text chapter body copy instead of the optional subtitle.
-    if (Number(nextNode.dataset.blankLinesBefore) > 0) return;
+    if (Number(nextNode.dataset.blankLinesBefore) > 0) {
+      // The blank line is structural here: the standard body rail supplies
+      // the intended separation from the chapter title.
+      delete nextNode.dataset.blankLinesBefore;
+      return;
+    }
     nextNode.dataset.role = "chapter-dek";
   });
 

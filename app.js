@@ -6,8 +6,8 @@ const googleDocsProxyEndpoint = window.location.hostname === "sxzdsn.github.io"
   ? "https://resilience-packet-google-doc-proxy.steph-design.workers.dev/api/google-doc"
   : "/api/google-doc";
 const quickLinkTargets = [
-  "https://docs.google.com/document/d/13yhuKlw0WF3yjTP6YQW87R5v5gYrE31CMm5VcE5GNC8/edit?tab=t.nn8dmo3ghr8e",
-  "https://docs.google.com/document/d/11Pd71ax4_Ps8vTyMKdki3V1_9eDsTGmswztkotPlkvg/edit?tab=t.0#heading=h.e1r57fw80q0q",
+  "https://docs.google.com/document/d/1zk0gfmfr4DiEXf68XUmp9tf-lK19oaz2QLYEo_Yytxo/edit?tab=t.nn8dmo3ghr8e",
+  "https://docs.google.com/document/d/1itQWoODToJypsL2GoAwpNdcs5thXu9Nwfc0JJC5DNT4/edit?tab=t.nn8dmo3ghr8e",
 ];
 const documentTitleCache = new Map();
 const isPublishedPacket = window.location.hostname === "sxzdsn.github.io";
@@ -415,7 +415,8 @@ function parseSource() {
     // parent H2 rather than continue the nested callout.
     const breaksOutOfNested = node.dataset.breakOutOfNested === "true"
       || Number(node.dataset.blankLinesBefore) > 0;
-    if (breaksOutOfNested && subsection?.depth === 3) {
+    const didBreakOutOfNested = breaksOutOfNested && subsection?.depth === 3;
+    if (didBreakOutOfNested) {
       const parentId = subsection.parentId;
       subsection = {
         id: `${chapter.id}-body-${chapter.subsections.length + 1}`,
@@ -495,22 +496,30 @@ function parseSource() {
         items: [...node.querySelectorAll("li")].map((item) => cleanHtml(item)),
       });
     } else if (node.dataset.blockType === "paired-blocks") {
+      const sourceRows = [...node.querySelectorAll(":scope > [data-paired-row]")];
       const list = node.querySelector(":scope > ul, :scope > ol");
       target.blocks.push({
         type: "paired-blocks",
-        rows: [...(list?.children || [])]
-          .filter((item) => item.tagName === "LI")
-          .map((item) => {
-            const label = item.cloneNode(true);
-            label.querySelectorAll(":scope > ul, :scope > ol").forEach((nested) => nested.remove());
-            const nestedList = item.querySelector(":scope > ul, :scope > ol");
-            return {
-              label: cleanHtml(label),
-              details: [...(nestedList?.children || [])]
-                .filter((detail) => detail.tagName === "LI")
-                .map((detail) => cleanHtml(detail)),
-            };
-          }),
+        outline: node.dataset.tableStyle === "outline",
+        rows: sourceRows.length
+          ? sourceRows.map((row) => ({
+            label: cleanHtml(row.querySelector(":scope > [data-paired-label]")),
+            details: [...row.querySelectorAll(":scope > [data-paired-details] > [data-paired-detail]")]
+              .map((detail) => cleanHtml(detail)),
+          }))
+          : [...(list?.children || [])]
+            .filter((item) => item.tagName === "LI")
+            .map((item) => {
+              const label = item.cloneNode(true);
+              label.querySelectorAll(":scope > ul, :scope > ol").forEach((nested) => nested.remove());
+              const nestedList = item.querySelector(":scope > ul, :scope > ol");
+              return {
+                label: cleanHtml(label),
+                details: [...(nestedList?.children || [])]
+                  .filter((detail) => detail.tagName === "LI")
+                  .map((detail) => cleanHtml(detail)),
+              };
+            }),
       });
     } else if (node.dataset.blockType === "callout-group") {
       target.blocks.push({
@@ -590,7 +599,7 @@ function parseSource() {
     }
     // The blank paragraph that exits an H3 describes structure, not a visible
     // spacer, so do not translate it into a rendered margin.
-    if (target.blocks.length > blockStart && node.dataset.blankLinesBefore && !breaksOutOfNested) {
+    if (target.blocks.length > blockStart && node.dataset.blankLinesBefore && !didBreakOutOfNested) {
       target.blocks[blockStart].blankLinesBefore = Number(node.dataset.blankLinesBefore) || 0;
     }
     if (target.blocks.length > blockStart && node.dataset.pageBreakBefore === "true") {
@@ -742,13 +751,25 @@ function makeBlock(block) {
   if (block.type === "paired-blocks") {
     const blocks = document.createElement("div");
     blocks.className = "content-block process-steps paired-blocks";
+    blocks.classList.toggle("paired-blocks-outline", block.outline === true);
     block.rows.forEach((item) => {
       const row = document.createElement("div");
       row.className = "process-step paired-block";
       const label = document.createElement("strong");
       label.innerHTML = item.label;
       const detail = document.createElement("span");
-      detail.innerHTML = item.details.join("<br>");
+      detail.className = "paired-block-details";
+      item.details.forEach((html) => {
+        const line = document.createElement("span");
+        line.className = "paired-block-detail";
+        const marker = document.createElement("span");
+        marker.className = "paired-block-marker";
+        marker.textContent = "-";
+        const copy = document.createElement("span");
+        copy.innerHTML = html;
+        line.append(marker, copy);
+        detail.append(line);
+      });
       row.append(label, detail);
       blocks.append(row);
     });
@@ -1648,6 +1669,7 @@ function makeCover(data = {}) {
   paper.dataset.pageStyle = "cover";
   paper.setAttribute("aria-label", "Packet cover");
   paper.innerHTML = `
+    <img class="cover-mark" src="assets/icons/resilience-cover-mark.png" alt="">
     <p class="cover-brand">RESILIENCE</p>
     <div class="cover-heading-group">
       <h2 class="cover-title"></h2>
