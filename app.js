@@ -1,4 +1,4 @@
-import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260802-04";
+import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260803-01";
 import { getLegacyFrameClass, makePageComparisons } from "./figma-comparison.js?v=20260713-01";
 
 const sampleSource = window.RESILIENCE_PACKET_SOURCE;

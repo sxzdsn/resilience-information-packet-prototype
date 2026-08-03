@@ -86,7 +86,7 @@ Whenever handing off a visual change, include the applicable plain clickable loc
 
 ## Google Docs Mapping
 
-- Heading 1 → chapter title. Normal text immediately following it may become the optional chapter subtitle.
+- Heading 1 → chapter title. Normal text immediately following it becomes the optional chapter subtitle; leave one blank paragraph after Heading 1 to skip the subtitle and begin with body copy instead.
 - Heading 2 → chapter section. If split, it repeats with continuation context.
 - Heading 3 → nested subsection with the restrained left rule.
 - Normal text → packet body copy.

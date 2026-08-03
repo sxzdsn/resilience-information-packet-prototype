@@ -741,8 +741,12 @@ export function transformGoogleDocExport(html, options = {}) {
   ));
 
   normalizedImported.forEach((node, index) => {
-    if (node.tagName !== "H1" || normalizedImported[index + 1]?.tagName !== "P") return;
-    normalizedImported[index + 1].dataset.role = "chapter-dek";
+    const nextNode = normalizedImported[index + 1];
+    if (node.tagName !== "H1" || nextNode?.tagName !== "P") return;
+    // An empty Google Docs paragraph after Heading 1 makes the following
+    // Normal text chapter body copy instead of the optional subtitle.
+    if (Number(nextNode.dataset.blankLinesBefore) > 0) return;
+    nextNode.dataset.role = "chapter-dek";
   });
 
   return {
