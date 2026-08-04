@@ -774,7 +774,7 @@ function makeBlock(block) {
         line.className = "paired-block-detail";
         const marker = document.createElement("span");
         marker.className = "paired-block-marker";
-        marker.textContent = "-";
+        marker.textContent = "→";
         const copy = document.createElement("span");
         copy.innerHTML = html;
         line.append(marker, copy);

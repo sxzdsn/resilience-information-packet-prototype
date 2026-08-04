@@ -25,7 +25,7 @@
   --page-scale: 0.9;
   --page-width: 612px;
   --page-height: 792px;
-  --content-width: 520px;
+  --content-width: 528px;
   --content-height: 600px;
 }
 
@@ -1297,14 +1297,12 @@ textarea:focus {
   font-size: 12px;
 }
 
-/* The Minors Rights table system uses Figma's wider 529px content rail.
-   Apply it from the content itself so live Google Doc imports measure and
-   render the same way as the bundled frame-specific pages. */
+/* Wide tables and paired blocks share the standard 42px page margins. */
 .page-content:has(.content-table),
 .measurement-content:has(.content-table),
 .page-content:has(.paired-blocks-outline),
 .measurement-content:has(.paired-blocks-outline) {
-  width: 529px;
+  width: var(--content-width);
 }
 
 .page-content {
@@ -1479,7 +1477,7 @@ textarea:focus {
 }
 
 .content-table {
-  width: 529px;
+  width: var(--content-width);
   overflow: hidden;
   border: 1px solid #ccc;
   border-collapse: separate;
@@ -1992,6 +1990,7 @@ textarea:focus {
 }
 
 .paired-blocks .paired-block {
+  align-items: start;
   column-gap: var(--paired-column-gap);
 }
 
@@ -2002,11 +2001,20 @@ textarea:focus {
 .paired-block-detail {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
   column-gap: 4px;
 }
 
+.paired-block-marker {
+  font-family: Inter, sans-serif;
+  font-size: 10px;
+  line-height: 1;
+  margin-block: auto;
+  opacity: 0.5;
+}
+
 .paired-blocks-outline {
-  width: 529px;
+  width: var(--content-width);
   row-gap: 0;
   column-gap: var(--paired-column-gap);
   overflow: hidden;
@@ -2166,8 +2174,8 @@ textarea:focus {
 .packet-footer {
   position: absolute;
   top: 736.81px;
-  left: 47.8px;
-  width: 506.81px;
+  left: 42px;
+  width: var(--content-width);
   height: 32px;
   border-top: 0.68px solid #e5e5e5;
   color: #000;
@@ -2419,7 +2427,7 @@ textarea:focus {
 }
 
 .letter-134 .chapter-dek {
-  width: 529px;
+  width: var(--content-width);
 }
 
 .letter-132 .subsection:first-child {
@@ -2458,7 +2466,7 @@ textarea:focus {
 .letter-135 .page-content,
 .letter-136 .page-content,
 .letter-137 .page-content {
-  width: 529px;
+  width: var(--content-width);
 }
 
 .letter-134 .subsection,
