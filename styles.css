@@ -1127,23 +1127,23 @@ textarea:focus {
 
 .orientation-footnote-asterisk {
   position: absolute;
-  top: 753.75px;
-  left: 172.56px;
-  width: 6.564px;
-  height: 6.564px;
+  top: 746px;
+  left: 28px;
+  width: 8.626px;
+  height: 9.149px;
 }
 
 .orientation-footnote {
   position: absolute;
-  top: 756.28px;
-  left: 181px;
-  right: 29px;
+  top: 745px;
+  left: 41px;
+  right: 28px;
   margin: 0;
-  font-size: 9px;
-  line-height: normal;
+  font-size: 10px;
+  line-height: 1.2;
   letter-spacing: -0.18px;
-  text-align: right;
-  white-space: nowrap;
+  text-align: left;
+  white-space: normal;
 }
 
 .letter-salutation {
@@ -1491,6 +1491,29 @@ textarea:focus {
   text-align: center;
   vertical-align: middle;
 }
+
+.content-table-imported th,
+.content-table-imported td {
+  text-align: left;
+}
+
+.content-table-imported [data-text-align="left"],
+.card-grid-imported [data-text-align="left"] { text-align: left; }
+
+.content-table-imported [data-text-align="center"],
+.card-grid-imported [data-text-align="center"] { text-align: center; }
+
+.content-table-imported [data-text-align="right"],
+.card-grid-imported [data-text-align="right"] { text-align: right; }
+
+.content-table-imported [data-text-align="justify"],
+.card-grid-imported [data-text-align="justify"] { text-align: justify; }
+
+.content-table-imported [data-text-align="start"],
+.card-grid-imported [data-text-align="start"] { text-align: start; }
+
+.content-table-imported [data-text-align="end"],
+.card-grid-imported [data-text-align="end"] { text-align: end; }
 
 .content-table th {
   /* Keep the semantic table header without overriding Google Docs emphasis. */
@@ -2014,7 +2037,7 @@ textarea:focus {
 .card-grid-imported article {
   align-content: center;
   min-height: 74px;
-  text-align: center;
+  text-align: left;
 }
 
 .card-grid article:only-child {

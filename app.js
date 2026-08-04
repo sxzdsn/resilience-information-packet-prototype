@@ -1,4 +1,4 @@
-import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260803-01";
+import { filterImportedContent, transformGoogleDocExport } from "./google-doc-import.js?v=20260804-02";
 import { getLegacyFrameClass, makePageComparisons } from "./figma-comparison.js?v=20260713-01";
 
 const sampleSource = window.RESILIENCE_PACKET_SOURCE;
@@ -213,6 +213,7 @@ function isStandaloneWebsite(value) {
 function cleanHtml(node) {
   const clone = node.cloneNode(true);
   const allowedTags = new Set(["A", "B", "BR", "EM", "I", "IMG", "LI", "OL", "P", "SPAN", "STRONG", "U", "UL"]);
+  const allowedTextAlignments = new Set(["left", "center", "right", "justify", "start", "end"]);
   clone.querySelectorAll("script, style, iframe, object, embed, link, meta").forEach((child) => child.remove());
   [...clone.querySelectorAll("*")].forEach((child) => {
     if (!allowedTags.has(child.tagName)) {
@@ -229,7 +230,10 @@ function cleanHtml(node) {
     }
 
     [...child.attributes].forEach((attribute) => {
-      if (child.tagName !== "A" || attribute.name.toLowerCase() !== "href") {
+      const name = attribute.name.toLowerCase();
+      const preservesAlignment = name === "data-text-align"
+        && allowedTextAlignments.has(attribute.value.toLowerCase());
+      if ((child.tagName !== "A" || name !== "href") && !preservesAlignment) {
         child.removeAttribute(attribute.name);
       }
     });
@@ -443,11 +447,13 @@ function parseSource() {
       target.blocks.push({
         type: "table",
         outline: node.dataset.tableStyle === "outline",
+        importedTable: node.dataset.importedTable === "true",
         rows: [...node.rows].map((row) =>
           [...row.cells].map((cell) => ({
             html: cleanHtml(cell),
             header: cell.tagName.toLowerCase() === "th",
             colspan: cell.colSpan || 1,
+            textAlign: cell.dataset.textAlign || "",
           })),
         ),
       });
@@ -530,7 +536,10 @@ function parseSource() {
             return {
               type: "card-grid",
               layout: part.dataset.layout || "columns",
-              cards: [...part.querySelectorAll(":scope > article")].map((item) => cleanHtml(item)),
+              cards: [...part.querySelectorAll(":scope > article")].map((item) => ({
+                html: cleanHtml(item),
+                textAlign: item.dataset.textAlign || "",
+              })),
             };
           }
           if (part.dataset.blockType === "contact-row") {
@@ -553,7 +562,10 @@ function parseSource() {
         type: "card-grid",
         layout: node.dataset.layout || "columns",
         importedTable: node.dataset.importedTable === "true",
-        cards: [...node.querySelectorAll(":scope > article")].map((item) => cleanHtml(item)),
+        cards: [...node.querySelectorAll(":scope > article")].map((item) => ({
+          html: cleanHtml(item),
+          textAlign: item.dataset.textAlign || "",
+        })),
       });
     } else if (node.dataset.blockType === "section-divider") {
       target.blocks.push({ type: "section-divider" });
@@ -616,7 +628,11 @@ function parseSource() {
         && next?.depth === 3
         && next.parentId === section.id;
     });
-    item.subsections = item.subsections.filter((section) => section.blocks.length > 0 || section.anchorsNextHeading);
+    item.subsections = item.subsections.filter((section) => (
+      section.blocks.length > 0
+      || section.anchorsNextHeading
+      || (section.depth === 2 && !section.isUntitled)
+    ));
   });
 
   const arranged = chapters.filter((item) => item.subsections.length > 0);
@@ -783,7 +799,8 @@ function makeBlock(block) {
     grid.classList.toggle("card-grid-imported", block.importedTable === true);
     block.cards.forEach((card) => {
       const article = document.createElement("article");
-      article.innerHTML = card;
+      article.innerHTML = typeof card === "string" ? card : card.html;
+      if (typeof card === "object" && card.textAlign) article.dataset.textAlign = card.textAlign;
       grid.append(article);
     });
     return grid;
@@ -820,6 +837,7 @@ function makeBlock(block) {
     const table = document.createElement("table");
     table.className = "content-block content-table";
     table.classList.toggle("content-table-outline", block.outline === true);
+    table.classList.toggle("content-table-imported", block.importedTable === true);
     table.classList.toggle(
       "table-single-column",
       block.rows.length === 3 && block.rows.every((row) => row.length === 1),
@@ -838,6 +856,7 @@ function makeBlock(block) {
         row.forEach((cell) => {
           const column = document.createElement("div");
           column.innerHTML = cell.html;
+          if (cell.textAlign) column.dataset.textAlign = cell.textAlign;
           columns.append(column);
         });
         td.append(columns);
@@ -846,6 +865,7 @@ function makeBlock(block) {
         const td = document.createElement(cell.header ? "th" : "td");
         td.innerHTML = cell.html.replace(/<\/strong><br>(?!<br>)/i, '</strong><span class="table-gap"></span>');
         td.colSpan = cell.colspan || 1;
+        if (cell.textAlign) td.dataset.textAlign = cell.textAlign;
         tr.append(td);
       });
       body.append(tr);
@@ -1698,7 +1718,7 @@ const orientationTextFitRules = [
   { selector: ".orientation-billing small", maxHeight: 34, minFontSize: 8 },
   { selector: ".orientation-organization p", maxHeight: 40, minFontSize: 10 },
   { selector: ".orientation-organization small", maxHeight: 20, minFontSize: 9 },
-  { selector: ".orientation-footnote", maxWidth: 402, maxHeight: 12, minFontSize: 6 },
+  { selector: ".orientation-footnote", maxWidth: 543, maxHeight: 26, minFontSize: 8 },
 ];
 
 function fitTextToBounds(element, { maxWidth = Infinity, maxHeight = Infinity, minFontSize }) {
@@ -1995,6 +2015,16 @@ function paginate() {
         const terminalHeight = measure(complete.node.cloneNode(true), current.measurementFrameClass);
         if (terminalHeight <= available) complete.height = terminalHeight;
         else complete.subsectionNode.classList.remove("is-page-terminal");
+      }
+
+      if (!subsection.blocks.length) {
+        if (complete.height > current.maxHeight - current.used && current.used > 0) {
+          nextPage();
+          complete = renderSubsection([], startsContinued);
+        }
+        current.content.append(complete.node);
+        current.used += complete.height;
+        return;
       }
 
       const hasForcedBlockBreak = subsection.blocks.some((block) => block.pageBreakBefore);

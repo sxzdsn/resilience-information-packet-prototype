@@ -50,6 +50,27 @@ function preserveGoogleInlineStyles(root, styleMap, ignoreRedText) {
   });
 }
 
+function googleTextAlignment(node, styleMap) {
+  const match = styleDeclarations(node, styleMap).match(
+    /(?:^|;)\s*text-align\s*:\s*(left|center|right|justify|start|end)\b/i,
+  );
+  return match?.[1].toLowerCase() || "";
+}
+
+function preserveGoogleTableAlignments(table, styleMap) {
+  table.dataset.importedTable = "true";
+  [...table.rows].forEach((row) => {
+    [...row.cells].forEach((cell) => {
+      const cellAlignment = googleTextAlignment(cell, styleMap);
+      if (cellAlignment) cell.dataset.textAlign = cellAlignment;
+      cell.querySelectorAll("p,ul,ol,li").forEach((block) => {
+        const alignment = googleTextAlignment(block, styleMap);
+        if (alignment) block.dataset.textAlign = alignment;
+      });
+    });
+  });
+}
+
 function topLevelGoogleBlocks(doc) {
   return [...doc.body.querySelectorAll(GOOGLE_DOC_BLOCK_SELECTOR)].filter((node) => {
     const parentBlock = node.parentElement?.closest(GOOGLE_DOC_BLOCK_SELECTOR);
@@ -109,6 +130,7 @@ function makeCardGridSourceBlock(table) {
     [...row.cells].forEach((cell) => {
       const article = table.ownerDocument.createElement("article");
       article.innerHTML = cell.innerHTML;
+      if (cell.dataset.textAlign) article.dataset.textAlign = cell.dataset.textAlign;
       grid.append(article);
     });
   });
@@ -516,7 +538,7 @@ function splitPrimaryAndDetail(value) {
 function parseSummaryGraphic(nodes) {
   const texts = meaningfulText(nodes);
   const categoryPattern = /\bright(?:s)?\b|confidential|emotion|\bbill(?:ed|ing)?\b|\bresilience\b/i;
-  const footnoteIndex = texts.findIndex((text) => /exception to confidentiality/i.test(text));
+  const footnoteIndex = texts.findIndex((text) => /exceptions? to confidentiality/i.test(text));
   const title = texts.find((text, index) => index !== footnoteIndex && !categoryPattern.test(text)) || texts[0] || "";
 
   const group = (pattern) => {
@@ -765,7 +787,10 @@ export function transformGoogleDocExport(html, options = {}) {
 
     pendingInlineImage = false;
 
-    if (node.tagName === "TABLE") normalizeTableCellLists(node, styleMap);
+    if (node.tagName === "TABLE") {
+      preserveGoogleTableAlignments(node, styleMap);
+      normalizeTableCellLists(node, styleMap);
+    }
 
     if (/^(?:UL|OL)$/.test(node.tagName) && pendingProcessBlock) {
       pendingProcessBlock = false;
