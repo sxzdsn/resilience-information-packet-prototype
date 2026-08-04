@@ -1994,6 +1994,15 @@ textarea:focus {
   column-gap: var(--paired-column-gap);
 }
 
+.paired-block-label-slot {
+  display: flex;
+  height: 1.35em;
+}
+
+.paired-block-label-slot > strong {
+  margin-block: auto;
+}
+
 .paired-block-details {
   display: grid;
 }
@@ -2003,6 +2012,11 @@ textarea:focus {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   column-gap: 4px;
+}
+
+.paired-block-marker-slot {
+  display: flex;
+  height: 1.35em;
 }
 
 .paired-block-marker {

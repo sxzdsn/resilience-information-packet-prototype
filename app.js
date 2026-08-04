@@ -765,6 +765,8 @@ function makeBlock(block) {
     block.rows.forEach((item) => {
       const row = document.createElement("div");
       row.className = "process-step paired-block";
+      const labelSlot = document.createElement("span");
+      labelSlot.className = "paired-block-label-slot";
       const label = document.createElement("strong");
       label.innerHTML = item.label;
       const detail = document.createElement("span");
@@ -772,15 +774,19 @@ function makeBlock(block) {
       item.details.forEach((html) => {
         const line = document.createElement("span");
         line.className = "paired-block-detail";
+        const markerSlot = document.createElement("span");
+        markerSlot.className = "paired-block-marker-slot";
         const marker = document.createElement("span");
         marker.className = "paired-block-marker";
         marker.textContent = "→";
         const copy = document.createElement("span");
         copy.innerHTML = html;
-        line.append(marker, copy);
+        markerSlot.append(marker);
+        line.append(markerSlot, copy);
         detail.append(line);
       });
-      row.append(label, detail);
+      labelSlot.append(label);
+      row.append(labelSlot, detail);
       blocks.append(row);
     });
     return blocks;
