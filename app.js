@@ -263,6 +263,7 @@ function sanitizeHtmlString(html) {
 function safeLinkHref(value) {
   const candidate = (value || "").trim();
   if (!candidate) return "";
+  if (/^#[a-z][\w:-]*$/i.test(candidate)) return candidate;
   if (/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(candidate)) return `mailto:${candidate}`;
   if (/^(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$/.test(candidate)) {
     const prefix = candidate.startsWith("+") ? "+" : "";
@@ -1643,6 +1644,8 @@ function contentHeightPx() {
 function makePaper(chapter, showChapterTitle, pageNumber) {
   const paper = document.createElement("article");
   paper.className = "paper content-page";
+  paper.dataset.chapterId = chapter.id;
+  if (showChapterTitle) paper.dataset.chapterStart = "true";
   paper.setAttribute("aria-label", `${chapter.title}, page ${pageNumber}`);
 
   if (showChapterTitle && chapter.showTitle !== false) {
@@ -1905,6 +1908,62 @@ function makeContentsPage(data, pageNumber) {
   return paper;
 }
 
+function contentsTargetChapter(label, chapters) {
+  const labelId = slugify(label);
+  const candidates = chapters
+    .filter((chapter) => !/^(?:in-this-packet|what-s-inside|contents)$/.test(chapter.id))
+    .sort((a, b) => b.id.length - a.id.length);
+  return candidates.find((chapter) => chapter.id === labelId)
+    || candidates.find((chapter) => labelId.startsWith(chapter.id) || chapter.id.startsWith(labelId));
+}
+
+function initializePacketContentsLinks(root, chapters) {
+  const targetIds = new Map();
+  chapters.forEach((chapter) => {
+    const paper = [...root.querySelectorAll(".paper[data-chapter-start='true']")]
+      .find((candidate) => candidate.dataset.chapterId === chapter.id);
+    const comparison = paper?.closest(".page-comparison");
+    if (!comparison) return;
+    const targetId = `packet-chapter-${chapter.id}`;
+    comparison.id = targetId;
+    targetIds.set(chapter.id, targetId);
+  });
+
+  const makeLink = (chapter) => {
+    const link = document.createElement("a");
+    link.className = "packet-contents-link";
+    link.href = `#${targetIds.get(chapter.id)}`;
+    return link;
+  };
+
+  root.querySelectorAll(".contents-page .contents-entry").forEach((entry) => {
+    const chapter = contentsTargetChapter(entry.querySelector("strong")?.textContent || "", chapters);
+    if (!chapter || !targetIds.has(chapter.id)) return;
+    const link = makeLink(chapter);
+    link.classList.add("contents-entry");
+    link.append(...entry.childNodes);
+    entry.replaceWith(link);
+  });
+
+  const contentsChapterIds = new Set(chapters
+    .filter((chapter) => /^(?:in-this-packet|what-s-inside|contents)$/.test(chapter.id))
+    .map((chapter) => chapter.id));
+  root.querySelectorAll(".paper[data-chapter-id] p.content-block").forEach((paragraph) => {
+    if (!contentsChapterIds.has(paragraph.closest(".paper")?.dataset.chapterId)) return;
+    const fragment = document.createDocumentFragment();
+    let link = null;
+    [...paragraph.childNodes].forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE && node.matches("strong")) {
+        const chapter = contentsTargetChapter(node.textContent || "", chapters);
+        link = chapter && targetIds.has(chapter.id) ? makeLink(chapter) : null;
+        if (link) fragment.append(link);
+      }
+      (link || fragment).append(node);
+    });
+    paragraph.replaceChildren(fragment);
+  });
+}
+
 function paginate() {
   const warnings = [];
   const fatalWarnings = [];
@@ -2095,6 +2154,7 @@ function paginate() {
 
   els.pages.replaceChildren(...makePageComparisons(output, isLiveDocument));
   fitOrientationText(els.pages);
+  initializePacketContentsLinks(els.pages, documentModel.chapters);
   activateLinks(els.pages);
   renderAnchoredIllustrations();
   renderPlacedIllustrations();

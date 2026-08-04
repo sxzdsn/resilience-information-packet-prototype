@@ -790,6 +790,14 @@ textarea:focus {
   text-decoration: none;
 }
 
+@media screen {
+  .packet-contents-link:hover strong,
+  .packet-contents-link:focus-visible strong {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+}
+
 .cover-page {
   font-family: Inter, sans-serif;
 }
