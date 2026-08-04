@@ -190,16 +190,8 @@ function syncDocsPreview(value = els.docsUrl.value) {
   if (previewUrl) void refreshDocumentTitles(value);
 }
 
-function syncQuickLink(value) {
-  const target = quickLinkTarget(value);
-  if (!target) {
-    els.quickLinkSection.hidden = true;
-    return;
-  }
-  const targetId = googleDocumentId(target);
-  els.quickLink.dataset.targetUrl = target;
-  els.quickLink.textContent = documentTitleCache.get(targetId) || "Loading document…";
-  els.quickLinkSection.hidden = false;
+function syncQuickLink() {
+  els.quickLinkSection.hidden = true;
 }
 
 function safeImageSource(value) {
