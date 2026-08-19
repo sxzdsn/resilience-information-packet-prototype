@@ -1,10 +1,32 @@
-# Resilience Packet Publisher Prototype
-
-This is a little one-off tool I made for Resilience, a victim advocacy nonprofit based in Chicago.
-
-I designed a black-and-white, printer-friendly template for their patient handouts and created this tool, which syncs with their latest Google Doc. It streamlines the organization’s content update process when legal or medical compliance requirements change.
+# Resilience Info Packet Publisher
 
 [View the live project](https://sxzdsn.github.io/resilience-packet-prototype/)
+
+This is a little one-off tool I made for Resilience, a victim advocacy nonprofit based in Chicago. They help people who come into the ER understand the process and their rights, so there are a lot of important details to pass along in an information packet.
+
+For this project:
+
+- I did an IA pass on their existing content to consolidate information and organize it into a clear, readable hierarchy, keeping in mind the not-ideal, sensitive state the intended reader may be in.
+
+- I designed a black-and-white, hospital printer-friendly template with ample negative space in each section for the advocate, nurse, or reader to write down notes or any information not covered in the content.
+
+- I made Resilience Chicago this Info Packet Publishing tool to streamline their existing process so the org and its volunteers could maintain the information packet without bottlenecks.
+
+  - **Before:** Resilience teammates used a source-of-truth Google Doc to align on copy and content. Once the copy was finalized, one of the tech-savvier volunteers would note all the changes, manually apply each change in Canva, and then export the packet.
+
+  - **Now:** Updating the content takes two simple steps: open the tool and export the PDF.
+
+    - The tool automatically loads the latest content from their Google Doc.
+    - I mapped the Google Docs styles they were already using—Heading 1, Heading 2, Heading 3, tables, etc.—to the designed styles in the template.
+    - I added simple plain-text directives to the document—such as `[page break]` and `[this picture should be inline]`—so they could control the composition when needed.
+
+## License
+
+The source code for this tool is open source under the [GNU Affero General Public License v3.0 or later](LICENSE). If someone modifies the tool and makes it available over a network, they must also make the source code for their modified version available under the same license.
+
+Resilience Chicago’s packet content, name, branding, design assets, reference imagery, and third-party fonts or artwork are not included in this license. See [NOTICE.md](NOTICE.md) for details.
+
+## Agent notes
 
 A local, dependency-free browser prototype containing the complete 25-page Figma packet and demonstrating:
 
