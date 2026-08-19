@@ -1,6 +1,6 @@
 # Resilience Info Packet Publisher
 
-[View the live project](https://sxzdsn.github.io/resilience-packet-prototype/)
+[View the live project](https://sxzdsn.github.io/resilience-information-packet-publisher/)
 
 This is a little one-off tool I made for Resilience, a victim advocacy nonprofit based in Chicago. They help people who come into the ER understand the process and their rights, so there are a lot of important details to pass along in an information packet.
 
