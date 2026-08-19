@@ -1,6 +1,10 @@
 # Resilience Packet Publisher Prototype
 
-Published at <https://sxzdsn.github.io/resilience-packet-prototype/>.
+This is a little one-off tool I made for Resilience, a victim advocacy nonprofit based in Chicago.
+
+I designed a black-and-white, printer-friendly template for their patient handouts and created this tool, which syncs with their latest Google Doc. It streamlines the organization’s content update process when legal or medical compliance requirements change.
+
+[View the live project](https://sxzdsn.github.io/resilience-packet-prototype/)
 
 A local, dependency-free browser prototype containing the complete 25-page Figma packet and demonstrating:
 
