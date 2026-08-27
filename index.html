@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Resilience Packet Publisher — Prototype</title>
-    <link rel="stylesheet" href="styles.css?v=20260804-13" />
+    <link rel="stylesheet" href="styles.css?v=20260827-01" />
   </head>
   <body>
     <main class="app-shell figma-hidden">
@@ -29,7 +29,7 @@
                 autocomplete="url"
                 spellcheck="false"
                 placeholder="Paste link here"
-                value="https://docs.google.com/document/d/1itQWoODToJypsL2GoAwpNdcs5thXu9Nwfc0JJC5DNT4/edit?tab=t.nn8dmo3ghr8e"
+                value="https://docs.google.com/document/d/13yhuKlw0WF3yjTP6YQW87R5v5gYrE31CMm5VcE5GNC8/edit?tab=t.nn8dmo3ghr8e"
               />
             </label>
             <div id="docsLinkPreview" class="source-doc-preview" hidden>
@@ -54,9 +54,18 @@
               <a id="openDocsLink" class="text-link" href="#" target="_blank" rel="noreferrer">Open in Google Doc</a>
             </div>
             <p id="importSummary" class="import-summary" aria-live="polite" hidden></p>
-            <div id="quickLinkSection" class="quick-link-section" hidden>
-              <span class="quick-link-label">Quick Links</span>
-              <button id="quickLink" class="quick-link" type="button"></button>
+            <div id="quickLinkSection" class="quick-link-section">
+              <button id="quickLink" class="quick-link" type="button" hidden></button>
+              <span class="quick-link-label">Suggested reasoning</span>
+              <a
+                class="suggested-reasoning-link"
+                href="https://www.figma.com/design/nX8yFtz9kKYPjBQSy8Q3W8/RESILIENCE-CHICAGO?node-id=77-1097&amp;t=CzXVT5BcOEFCDduS-1"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open suggested reasoning in Figma"
+              >
+                https://www.figma.com/design/nX8yFtz9kKYPjBQSy8Q3W8/RESILIENCE-CHICAGO?node-id=77-1097
+              </a>
             </div>
             <div id="docsSource" hidden></div>
           </div>
@@ -122,6 +131,6 @@
 
     <div id="measurementStage" class="measurement-stage" aria-hidden="true"></div>
     <script src="packet-content.js?v=20260713-14"></script>
-    <script type="module" src="app.js?v=20260804-08"></script>
+    <script type="module" src="app.js?v=20260827-01"></script>
   </body>
 </html>

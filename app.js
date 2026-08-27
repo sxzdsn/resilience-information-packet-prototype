@@ -191,7 +191,8 @@ function syncDocsPreview(value = els.docsUrl.value) {
 }
 
 function syncQuickLink() {
-  els.quickLinkSection.hidden = true;
+  els.quickLinkSection.hidden = false;
+  els.quickLink.hidden = true;
 }
 
 function safeImageSource(value) {
