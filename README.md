@@ -1,3 +1,5 @@
+To do: publisher interface is claude, if there's more usage I'll take the time to refine.
+
 # Resilience Info Packet Publisher
 
 [View the live project](https://sxzdsn.github.io/resilience-information-packet-prototype/)
